@@ -28,24 +28,43 @@
 /* ===== COMMON ===== */
 .side-img {
   position: fixed;
-  top: 50%;                         /* 👈 giữa theo chiều dọc */
-  transform: translateY(-50%);      /* 👈 chuẩn center */
-
-  width: 180px;                     /* 👈 120px × 1.5 = 180px */
-  height: auto;                     /* 👈 KHÔNG vỡ ảnh */
-
+  top: 50%;
+  transform: translateY(-50%);
+  width: 180px;
+  height: auto;
   z-index: 900;
   opacity: 0.95;
+
+  transform-origin: center bottom; /* 👈 lắc quanh đáy bánh */
 }
 
 /* LEFT */
 .side-img.left {
   left: -25px;
+  animation: cake-sway-left 7s ease-in-out infinite;
 }
 
 /* RIGHT */
 .side-img.right {
   right: -25px;
+  animation: cake-sway-right 6.5s ease-in-out infinite;
+}
+
+/* ===== ANIMATION ===== */
+@keyframes cake-sway-left {
+  0%   { transform: translateY(-50%) rotate(0deg); }
+  25%  { transform: translateY(-50%) rotate(2deg); }
+  50%  { transform: translateY(-50%) rotate(0deg); }
+  75%  { transform: translateY(-50%) rotate(-2deg); }
+  100% { transform: translateY(-50%) rotate(0deg); }
+}
+
+@keyframes cake-sway-right {
+  0%   { transform: translateY(-50%) rotate(0deg); }
+  25%  { transform: translateY(-50%) rotate(-2.5deg); }
+  50%  { transform: translateY(-50%) rotate(0deg); }
+  75%  { transform: translateY(-50%) rotate(2.5deg); }
+  100% { transform: translateY(-50%) rotate(0deg); }
 }
 
 /* ===== RESPONSIVE ===== */
@@ -57,7 +76,8 @@
 
 @media (max-width: 576px) {
   .side-img {
-    display: none; /* mobile ẩn như Christmas */
+    display: none;
   }
 }
+
 </style>

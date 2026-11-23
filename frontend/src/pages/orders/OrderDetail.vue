@@ -80,8 +80,8 @@
           <button
             v-if="order.paymentstatus==='unpaid' && order.orderstatus==='pending'"
             class="btn btn-primary"
-            @click="openPay('qr')"
-          >Pay by QR</button>
+            @click="payWithVNPay"
+          >Pay with VNPay</button>
 
           <button
             v-if="order.paymentstatus==='unpaid' && order.orderstatus==='pending'"
@@ -251,6 +251,20 @@ async function ensureModal(){
       stopPolling()
       await fetchDetail()          // ⬅️ đóng modal là refresh ngay
     })
+  }
+}
+
+async function payWithVNPay(){
+  if (!order.value || order.value.orderstatus !== 'pending' || order.value.paymentstatus !== 'unpaid') {
+    toast('Real Madrid Club responded that: This order cannot be paid.', 'error')
+    return
+  }
+  try {
+    const r = await api.post('/payments/vnpay/product', { orderId: orderId.value })
+    if (!r.data?.paymentUrl) throw new Error('Missing VNPay payment URL')
+    window.location.assign(r.data.paymentUrl)
+  } catch (e) {
+    toast(e?.response?.data?.message || 'Unable to start VNPay payment', 'error')
   }
 }
 

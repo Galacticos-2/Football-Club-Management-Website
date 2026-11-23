@@ -9,8 +9,11 @@
 
     <!-- HERO -->
     <section class="hero text-white">
-      <div class="hero-content text-center">
-        <ChristmasGiftBox @open="showGiftAnimation = true" />
+  <div class="hero-content text-center">
+    <ChristmasGiftBox />
+    <BirthdayGiftBox/>
+
+  
 
 
 
@@ -833,8 +836,11 @@ import MatchScoreboard from '@/components/MatchScoreboard.vue'
 import PalmaresSummary from '@/pages/palmares/PalmaresSummary.vue'
 import { useRouter } from 'vue-router'
 import ChristmasGiftBox from "@/components/events/christmas/ChristmasGiftBox.vue";
+import BirthdayGiftBox from "@/components/events/birthday/BirthdayGiftBox.vue";
+
+
 import { loadActiveEvent } from "@/events/useEvent";
-import ChristmasGiftAnimation from "@/components/events/christmas/ChristmasGiftAnimation.vue";
+
 
 const router = useRouter()
 let liveInterval = null;
@@ -1518,6 +1524,9 @@ async function submitBuy() {
     loadingBuy.value = false
   }
 }
+
+
+
 
 </script>
 

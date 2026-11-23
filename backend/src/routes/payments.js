@@ -1,16 +1,17 @@
-// backend/src/routes/payments.js
 const express = require("express");
 const { authMiddleware } = require("../middleware/authmiddleware");
 const ctrl = require("../controllers/paymentscontroller");
 
 const router = express.Router();
+
 router.post("/session", authMiddleware, ctrl.createSession);
 router.get("/session/:id", authMiddleware, ctrl.getSession);
-// mock “provider -> backend callback”
-router.post("/callback", ctrl.mockCallback);
-// Webhook thật từ provider (Stripe/VNPay/MoMo...). Body là raw do app.js đã gắn express.raw()
-router.post("/webhook", ctrl.webhook); // KHÔNG authMiddleware
-// tạo session thanh toán (mock)
+router.post("/vnpay/product", authMiddleware, ctrl.createVnpayProduct);
+router.post("/vnpay/ticket", authMiddleware, ctrl.createVnpayTicket);
+router.post("/webhook", ctrl.webhook);
 
+// VNPay calls this endpoint server-to-server. IPN, not browser return, changes order state.
+router.get("/vnpay/ipn", ctrl.vnpayIpn);
+router.get("/vnpay/return", ctrl.vnpayReturn);
 
 module.exports = router;

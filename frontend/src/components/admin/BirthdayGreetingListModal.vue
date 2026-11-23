@@ -57,8 +57,8 @@
             <td class="text-center">
               <input
                 type="checkbox"
-                v-model="g.enabled"
-                @change="update(g)"
+                :checked="g.enabled"
+                @change="toggleEnable(g)"
               />
             </td>
 
@@ -115,6 +115,21 @@ const totalPercent = computed(() =>
     .filter(g => g.enabled)
     .reduce((sum, g) => sum + g.weight, 0)
 );
+async function toggleEnable(g) {
+  const newValue = !g.enabled;
+
+  try {
+    const res = await updateGreeting(g.id, {
+      enabled: newValue,
+      weight: g.weight,
+    });
+
+    // ✅ SYNC TỪ BACKEND (single source of truth)
+    g.enabled = res.data.enabled;
+  } catch (err) {
+    alert("Failed to update greeting status");
+  }
+}
 
 async function reload() {
   const res = await getGreetings("birthday");
@@ -124,7 +139,7 @@ async function reload() {
 async function update(g) {
   await updateGreeting(g.id, {
     weight: g.weight,
-    enabled: g.enabled,
+    
   });
 }
 

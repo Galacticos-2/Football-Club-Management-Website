@@ -20,14 +20,16 @@ async function ensureSchema() {
 }
 ensureSchema().catch(console.error);//run this function  when backend start
 
-// Lấy CartID theo UserID
+// Lấy CartID theo UserID, mỗi user chỉ có 1 cart, nếu chưa có thì tạo mới tự động
 async function getCartIdByUser(userId) {
   const r = await pool.query(
+    //Check if the cart already exists.
     `SELECT cartid FROM shoppingcart WHERE userid=$1`,
     [userId]
   );
   if (!r.rows.length) {
     const ins = await pool.query(
+      //if the cart does not exist, create a new cart
       `INSERT INTO shoppingcart(userid) VALUES($1) RETURNING cartid`,
       [userId]
     );

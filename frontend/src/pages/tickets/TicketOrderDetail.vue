@@ -81,6 +81,13 @@
           >
             Pay by wallet
           </button>
+          <button
+            v-if="head.paymentstatus === 'unpaid' && head.orderstatus === 'pending'"
+            class="btn btn-primary"
+            @click="payWithVNPay"
+          >
+            Pay with VNPay
+          </button>
         </div>
       </div>
     </div>
@@ -184,6 +191,16 @@ async function payWithWallet() {
       const auth = useAuthStore()
       await auth.refreshUser()
     } catch {}
+  }
+}
+
+async function payWithVNPay() {
+  try {
+    const r = await api.post('/payments/vnpay/ticket', { orderId: orderId.value })
+    if (!r.data?.paymentUrl) throw new Error('Missing VNPay payment URL')
+    window.location.assign(r.data.paymentUrl)
+  } catch (e) {
+    toast(e?.response?.data?.message || 'Unable to start VNPay payment', 'error')
   }
 }
 

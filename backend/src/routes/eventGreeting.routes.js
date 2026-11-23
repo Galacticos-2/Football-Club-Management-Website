@@ -138,7 +138,11 @@ router.put("/greetings/:id", async (req, res) => {
       SET
         message = COALESCE($1, message),
         weight  = COALESCE($2, weight),
-        enabled = COALESCE($3, enabled)
+        enabled = CASE
+  WHEN $3 IS NULL THEN enabled
+  ELSE $3
+END
+
       WHERE id = $4
       RETURNING *
       `,

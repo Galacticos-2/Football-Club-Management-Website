@@ -1,19 +1,17 @@
 const express = require("express");
 const router = express.Router();
 const pool = require("../../config/db");
+const { upload } = require("../middleware/uploadMulter");
 
 /**
  * ==========================================
  * GET ACTIVE EVENT
- * Trả về event đang enabled (hoặc null)
- * MỞ RỘNG: trả thêm music_enabled + music_url
  * ==========================================
  * GET /api/events/active
  */
 router.get("/active", async (req, res) => {
   try {
-    const { rows } = await pool.query(
-      `
+    const { rows } = await pool.query(`
       SELECT
         id,
         key,
@@ -24,22 +22,20 @@ router.get("/active", async (req, res) => {
       FROM events
       WHERE enabled = true
       LIMIT 1
-      `
-    );
+    `);
 
-    if (!rows.length) {
-      return res.json(null);
-    }
+    if (!rows.length) return res.json(null);
 
     const event = rows[0];
 
     res.json({
       key: event.key,
       enabled: event.enabled,
-      config: event.config || {},
-
-      // 🎵 Christmas music (frontend sẽ tự dùng khi key === "christmas")
-      music_enabled: event.music_enabled || false,
+      config:
+        typeof event.config === "string"
+          ? JSON.parse(event.config)
+          : event.config || {},
+      music_enabled: !!event.music_enabled,
       music_url: event.music_url || null,
     });
   } catch (err) {
@@ -50,10 +46,51 @@ router.get("/active", async (req, res) => {
 
 /**
  * ==========================================
+ * 🎵 UPLOAD MUSIC FOR EVENT (CHRISTMAS / BIRTHDAY)
+ * ==========================================
+ * POST /api/events/:key/music
+ */
+router.post("/:key/music", upload.single("music"), async (req, res) => {
+  const { key } = req.params;
+
+  // ✅ Chỉ cho phép các event hợp lệ
+  if (!["christmas", "birthday"].includes(key)) {
+    return res.status(400).json({ message: "Invalid event key" });
+  }
+
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "No music file uploaded" });
+    }
+
+    // ✅ Đường dẫn public tuyệt đối cho frontend
+    const musicUrl = `/uploads/events/${key}/${req.file.filename}`;
+
+    // ✅ QUAN TRỌNG: SET music_enabled = true
+    await pool.query(
+      `
+      UPDATE events
+      SET
+        music_url = $1,
+        music_enabled = true
+      WHERE key = $2
+      `,
+      [musicUrl, key]
+    );
+
+    res.json({
+      success: true,
+      music_url: musicUrl,
+    });
+  } catch (err) {
+    console.error("POST /events/:key/music error:", err.message);
+    res.status(500).json({ message: "Failed to upload music" });
+  }
+});
+
+/**
+ * ==========================================
  * ENABLE ONE EVENT (ADMIN)
- * - Disable tất cả
- * - Enable event theo key
- * - Với christmas: nhận greeting từ body và lưu vào config
  * ==========================================
  * PUT /api/events/:key/enable
  */
@@ -71,13 +108,14 @@ router.put("/:key/enable", async (req, res) => {
     if (key === "christmas") {
       query = `
         UPDATE events
-        SET enabled = true,
-            config = jsonb_set(
-              config,
-              '{greeting}',
-              to_jsonb($2::text),
-              true
-            )
+        SET
+          enabled = true,
+          config = jsonb_set(
+            COALESCE(config, '{}'),
+            '{greeting}',
+            to_jsonb($2::text),
+            true
+          )
         WHERE key = $1
         RETURNING *
       `;
@@ -102,7 +140,7 @@ router.put("/:key/enable", async (req, res) => {
 
 /**
  * ==========================================
- * DISABLE ALL EVENTS (ADMIN)
+ * DISABLE ALL EVENTS
  * ==========================================
  * PUT /api/events/disable
  */

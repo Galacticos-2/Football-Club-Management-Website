@@ -1,12 +1,13 @@
 <!-- src/App.vue -->
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { RouterView } from 'vue-router'
 import NavBar from '@/components/NavBar.vue'
 import FooterBar from '@/components/FooterBar.vue'
 import ToastHost from '@/components/ToastHost.vue'
 import EventProvider from "@/events/EventProvider.vue";
-
+import EventMusic from "@/components/events/EventMusic.vue";
+import { useEvent } from "@/events/useEvent";
 // 🔥 1) STATE THEME GLOBAL
 // =========================================
 const theme = ref(localStorage.getItem("theme") || "light")
@@ -22,26 +23,42 @@ function toggleTheme() {
   document.documentElement.setAttribute("data-bs-theme", theme.value)
   localStorage.setItem("theme", theme.value)
 }
+const { activeEvent } = useEvent();
+
+/**
+ * 🔊 Ghép URL nhạc từ backend
+ */
+const musicSrc = computed(() => {
+  if (!activeEvent.value?.music_url) return null;
+  const base = import.meta.env.VITE_API_BASE.replace("/api", "");
+  return base + activeEvent.value.music_url;
+});
+
 </script>
 
 
 <template>
   <EventProvider>
-  <!-- Navbar cố định -->
-  <NavBar :theme="theme" @toggle-theme="toggleTheme" />
+    <!-- 🔊 EVENT MUSIC (LUÔN MOUNT) -->
+    <EventMusic
+      :enabled="!!activeEvent?.music_enabled"
+      :src="musicSrc"
+    />
 
-  <!-- Nội dung chính -->
-  <main class="app-content">
-    
-    <RouterView />
-    
-    <FooterBar />
-  </main>
+    <!-- Navbar cố định -->
+    <NavBar :theme="theme" @toggle-theme="toggleTheme" />
 
-  <!-- Toast notifications -->
-  <ToastHost />
+    <!-- Nội dung chính -->
+    <main class="app-content">
+      <RouterView />
+      <FooterBar />
+    </main>
+
+    <!-- Toast notifications -->
+    <ToastHost />
   </EventProvider>
 </template>
+
 
 <style scoped>
 /* Bù đúng chiều cao thực tế của navbar (~56px) */

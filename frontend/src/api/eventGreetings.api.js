@@ -10,11 +10,11 @@ export function addGreeting(eventKey, data) {
 }
 
 export function updateGreeting(id, data) {
-  return api.put(`/greetings/${id}`, data);
+  return api.put(`/events/greetings/${id}`, data);
 }
 
 export function deleteGreeting(id) {
-  return api.delete(`/greetings/${id}`);
+  return api.delete(`/events/greetings/${id}`);
 }
 
 /* User / Admin */

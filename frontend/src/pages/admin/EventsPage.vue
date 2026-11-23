@@ -15,47 +15,40 @@
 
       <tbody>
         <tr v-for="event in events" :key="event.key">
-          <!-- Event -->
           <td class="fw-semibold">{{ event.name }}</td>
 
-          <!-- Time -->
           <td class="text-muted">
             {{ event.startDate }} → {{ event.endDate }}
           </td>
 
-          <!-- Status -->
           <td>
             <EventStatusBadge :enabled="event.enabled" />
           </td>
 
-          <!-- 🎵 Music (Christmas only) -->
+          <!-- 🎵 MUSIC (CHRISTMAS + BIRTHDAY) -->
           <td>
-            <div v-if="event.key === 'christmas'">
+            <div v-if="event.key === 'christmas' || event.key === 'birthday'">
               <input
                 type="file"
                 accept="audio/mpeg"
                 class="form-control form-control-sm mb-1"
                 :disabled="event.enabled"
-                @change="onSelectMusic($event)"
+                @change="onSelectMusic($event, event.key)"
               />
 
-              <small
-                v-if="event.musicUploaded"
-                class="text-success"
-              >
-                🎵 Music uploaded & saved
+              <small v-if="event.musicUploaded" class="text-success">
+                🎵 Music uploaded
               </small>
 
               <small
-                v-else-if="selectedMusic"
+                v-else-if="selectedMusic[event.key]"
                 class="text-muted"
               >
-                Selected: {{ selectedMusic.name }}
+                Selected: {{ selectedMusic[event.key].name }}
               </small>
             </div>
           </td>
 
-          <!-- Action -->
           <td class="text-end">
             <button
               class="btn btn-outline-primary btn-sm me-2"
@@ -64,63 +57,60 @@
               {{ event.enabled ? "Disable" : "Enable" }}
             </button>
 
-            <!-- Greeting Manager -->
             <button
-  v-if="event.key === 'christmas' || event.key === 'birthday'"
-  class="btn btn-outline-secondary btn-sm"
-  @click="openEdit(event)"
->
-  Greeting
-</button>
-
+              v-if="event.key === 'christmas' || event.key === 'birthday'"
+              class="btn btn-outline-secondary btn-sm"
+              @click="openEdit(event)"
+            >
+              Greeting
+            </button>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
 
-  <!-- 🔥 GREETING LIST MODAL -->
+  <!-- GREETING MODALS -->
   <GreetingListModal
-  v-if="showGreetingModal && selectedEvent?.key === 'christmas'"
-  :eventKey="selectedEvent.key"
-  @close="showGreetingModal = false"
-/>
+    v-if="showGreetingModal && selectedEvent?.key === 'christmas'"
+    :eventKey="selectedEvent.key"
+    @close="showGreetingModal = false"
+  />
 
-<BirthdayGreetingListModal
-  v-if="showGreetingModal && selectedEvent?.key === 'birthday'"
-  @close="showGreetingModal = false"
-/>
-
-
-
+  <BirthdayGreetingListModal
+    v-if="showGreetingModal && selectedEvent?.key === 'birthday'"
+    @close="showGreetingModal = false"
+  />
 </template>
+
 
 <script setup>
 import { ref, onMounted, watch } from "vue";
 import EventStatusBadge from "@/components/admin/EventStatusBadge.vue";
 import GreetingListModal from "@/components/admin/GreetingListModal.vue";
-import BirthdayGreetingListModal
-  from "@/components/admin/BirthdayGreetingListModal.vue";
+import BirthdayGreetingListModal from "@/components/admin/BirthdayGreetingListModal.vue";
 
 import {
   enableEvent,
   disableEvent,
-  uploadChristmasMusic,
+  uploadEventMusic,
 } from "@/api/events.api";
+
 import { useEvent, loadActiveEvent } from "@/events/useEvent";
 
-/**
- * Global event state (backend-driven)
- */
 const { activeEvent } = useEvent();
 
 /**
- * Selected music file (Christmas)
+ * Selected music per event
+ * {
+ *   christmas: File,
+ *   birthday: File
+ * }
  */
-const selectedMusic = ref(null);
+const selectedMusic = ref({});
 
 /**
- * Local admin list (UI)
+ * Local admin list
  */
 const events = ref([
   {
@@ -139,39 +129,36 @@ const events = ref([
     enabled: false,
   },
   {
-  key: "birthday",
-  name: "Birthday",
-  startDate: "-",
-  endDate: "-",
-  enabled: false,
-}
-
+    key: "birthday",
+    name: "Birthday",
+    startDate: "-",
+    endDate: "-",
+    enabled: false,
+    musicUploaded: false,
+  },
 ]);
 
 /**
- * Toggle event (enable / disable)
+ * Toggle event
  */
 async function toggle(event) {
   try {
-    if (!event.enabled && event.key === "christmas") {
-      // 1️⃣ Upload music first (if selected)
-      if (selectedMusic.value) {
+    if (!event.enabled) {
+      // Upload music if exists
+      if (selectedMusic.value[event.key]) {
         const form = new FormData();
-        form.append("music", selectedMusic.value);
-        await uploadChristmasMusic(form);
+        form.append("music", selectedMusic.value[event.key]);
+        form.append("eventKey", event.key);
+
+        await uploadEventMusic(event.key, form);
 
         event.musicUploaded = true;
-        selectedMusic.value = null;
+        selectedMusic.value[event.key] = null;
       }
 
-      // 2️⃣ Enable Christmas event
-      await enableEvent("christmas");
-    } else if (event.enabled) {
-      // Disable all events
-      await disableEvent();
-    } else {
-      // Enable other events
       await enableEvent(event.key);
+    } else {
+      await disableEvent();
     }
 
     await loadActiveEvent();
@@ -182,9 +169,9 @@ async function toggle(event) {
 }
 
 /**
- * Handle music file selection
+ * Select music file
  */
-function onSelectMusic(e) {
+function onSelectMusic(e, key) {
   const file = e.target.files[0];
   if (!file) return;
 
@@ -193,11 +180,11 @@ function onSelectMusic(e) {
     return;
   }
 
-  selectedMusic.value = file;
+  selectedMusic.value[key] = file;
 }
 
 /**
- * Sync table on load
+ * Sync on load
  */
 onMounted(async () => {
   await loadActiveEvent();
@@ -208,8 +195,9 @@ onMounted(async () => {
       : false;
 
     if (
-      e.key === "christmas" &&
-      activeEvent.value?.music_url
+      activeEvent.value &&
+      e.key === activeEvent.value.key &&
+      activeEvent.value.music_url
     ) {
       e.musicUploaded = true;
     }
@@ -222,15 +210,12 @@ onMounted(async () => {
 watch(activeEvent, (ev) => {
   events.value.forEach((e) => {
     e.enabled = ev ? e.key === ev.key : false;
-
-    if (e.key === "christmas") {
-      e.musicUploaded = !!ev?.music_url;
-    }
+    e.musicUploaded = ev?.key === e.key && !!ev?.music_url;
   });
 });
 
 /**
- * Greeting modal control
+ * Greeting modal
  */
 const selectedEvent = ref(null);
 const showGreetingModal = ref(false);
@@ -240,3 +225,4 @@ function openEdit(event) {
   showGreetingModal.value = true;
 }
 </script>
+

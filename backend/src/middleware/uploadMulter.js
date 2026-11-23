@@ -14,27 +14,34 @@ const POSTER_DIR = path.join(UPLOAD_ROOT, "videos", "posters");
 
 /**
  * ==========================================
- * 🎄 CHRISTMAS MUSIC DIRECTORY (MỚI)
+ * 🎵 EVENT MUSIC DIRECTORIES (TÁCH RIÊNG)
  * ==========================================
  */
-const MUSIC_DIR = path.join(UPLOAD_ROOT, "events", "christmas");
+const CHRISTMAS_MUSIC_DIR = path.join(UPLOAD_ROOT, "events", "christmas");
+const BIRTHDAY_MUSIC_DIR = path.join(UPLOAD_ROOT, "events", "birthday");
 
 /**
  * ==========================================
  * ENSURE DIRECTORIES EXIST
  * ==========================================
  */
-for (const d of [UPLOAD_ROOT, SRC_DIR, POSTER_DIR, MUSIC_DIR]) {
+for (const d of [
+  UPLOAD_ROOT,
+  SRC_DIR,
+  POSTER_DIR,
+  CHRISTMAS_MUSIC_DIR,
+  BIRTHDAY_MUSIC_DIR,
+]) {
   if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
 }
 
 /**
  * ==========================================
- * FILE FILTER (GIỮ NGUYÊN + THÊM MUSIC)
+ * FILE FILTER
  * ==========================================
  */
 function fileFilter(req, file, cb) {
-  // 🎥 Video upload (GIỮ NGUYÊN)
+  // 🎥 Video
   if (file.fieldname === "video") {
     if (/mp4|mpeg4/.test(file.mimetype) || /\.mp4$/i.test(file.originalname)) {
       return cb(null, true);
@@ -42,7 +49,7 @@ function fileFilter(req, file, cb) {
     return cb(new Error("Video must be MP4"), false);
   }
 
-  // 🖼 Thumbnail upload (GIỮ NGUYÊN)
+  // 🖼 Thumbnail
   if (file.fieldname === "thumb") {
     if (/image\/(png|jpe?g)/.test(file.mimetype)) {
       return cb(null, true);
@@ -50,7 +57,7 @@ function fileFilter(req, file, cb) {
     return cb(new Error("Thumb must be PNG/JPG"), false);
   }
 
-  // 🎵 Christmas music upload (MỚI)
+  // 🎵 Music (MP3)
   if (file.fieldname === "music") {
     if (file.mimetype === "audio/mpeg") {
       return cb(null, true);
@@ -58,7 +65,6 @@ function fileFilter(req, file, cb) {
     return cb(new Error("Music must be MP3"), false);
   }
 
-  // ❌ Không chấp nhận field khác
   cb(new Error("Invalid upload field"), false);
 }
 
@@ -75,8 +81,17 @@ const storage = multer.diskStorage({
     // 🖼 Thumbnail
     if (file.fieldname === "thumb") return cb(null, POSTER_DIR);
 
-    // 🎵 Christmas music
-    if (file.fieldname === "music") return cb(null, MUSIC_DIR);
+    // 🎵 Event music (PHÂN THEO EVENT)
+    if (file.fieldname === "music") {
+      const eventKey = req.body.eventKey;
+
+      if (eventKey === "birthday") {
+        return cb(null, BIRTHDAY_MUSIC_DIR);
+      }
+
+      // default: christmas
+      return cb(null, CHRISTMAS_MUSIC_DIR);
+    }
 
     cb(new Error("Invalid upload destination"), null);
   },
@@ -92,14 +107,14 @@ const storage = multer.diskStorage({
 
 /**
  * ==========================================
- * MULTER INSTANCE (GIỮ NGUYÊN LIMIT)
+ * MULTER INSTANCE
  * ==========================================
  */
 const upload = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 1024 * 1024 * 1024, // 1GB (giữ nguyên cho video)
+    fileSize: 1024 * 1024 * 1024, // 1GB
   },
 });
 
@@ -108,5 +123,6 @@ module.exports = {
   UPLOAD_ROOT,
   SRC_DIR,
   POSTER_DIR,
-  MUSIC_DIR, // export thêm (không ảnh hưởng logic cũ)
+  CHRISTMAS_MUSIC_DIR,
+  BIRTHDAY_MUSIC_DIR,
 };
